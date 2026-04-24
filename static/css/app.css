@@ -833,9 +833,16 @@ body {
     padding: 0 0.75rem 1.5rem;
   }
 
+  /* Mobilda to'liq top-bar sticky bo'lishi juda ko'p joy oladi —
+     oddiy scroll'da harakatlanadigan qilib qoldiramiz */
   .top-flow {
+    position: static;
     margin: 0 -0.75rem 0.5rem;
     padding: 0.5rem 0.75rem 0.4rem;
+    box-shadow: none;
+    background: transparent;
+    backdrop-filter: none;
+    border-bottom: 1px solid var(--card-border);
   }
 
   /* Kompakt grid: brand + theme (1-qator), datetime+weather (2-qator), fx-pills (3-qator) */
@@ -850,24 +857,45 @@ body {
     align-items: center;
   }
 
-  .top-flow-brand  { grid-area: brand; min-width: 0; }
+  .top-flow-brand {
+    grid-area: brand;
+    min-width: 0;
+    align-self: center;
+  }
   .top-theme.theme-toggle {
     grid-area: theme;
     justify-self: end;
+    align-self: center;
   }
   .top-flow-datetime {
     grid-area: datetime;
     font-size: 0.78rem;
+    align-self: center;
   }
   .top-flow-weather {
     grid-area: weather;
     justify-self: end;
     font-size: 0.78rem;
+    align-self: center;
   }
+  /* FX pills mobilda stretch'siz, oddiy kichik pillar sifatida */
   .top-flow-fx {
     grid-area: fx;
-    justify-content: flex-start;
+    display: flex;
     flex-wrap: wrap;
+    flex: 0 1 auto;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.3rem;
+    align-self: center;
+    min-height: 0;
+  }
+  .top-flow-fx .fx-pill {
+    align-self: center;
+    height: auto;
+    line-height: 1.3;
+    font-size: 0.7rem;
+    padding: 0.22rem 0.5rem;
   }
 
   .hero {
