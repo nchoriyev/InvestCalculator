@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }} — {{ project.name }}</title>
+  <style>
+    @page { size: A4; margin: 1.6cm 1.5cm 1.8cm 1.5cm; }
+    body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1a1d24; line-height: 1.5; }
+
+    .head { border-bottom: 2px solid #0284c7; padding-bottom: 10pt; margin-bottom: 14pt; }
+    .head .brand { font-size: 9pt; color: #0284c7; text-transform: uppercase; font-weight: 700; }
+    .head h1 { font-size: 18pt; margin: 4pt 0 2pt; color: #0f172a; font-weight: 700; }
+    .head .meta { font-size: 9pt; color: #64748b; margin-top: 4pt; }
+    .head .meta b { color: #1a1d24; }
+
+    h3.block-title {
+      font-size: 10pt; color: #475569; margin: 12pt 0 4pt;
+      text-transform: uppercase; font-weight: 600;
+    }
+
+    table.kv {
+      width: 100%; border-collapse: collapse; font-size: 10pt;
+      margin-bottom: 4pt;
+    }
+    table.kv th, table.kv td { padding: 5pt 8pt; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    table.kv th { text-align: left; color: #64748b; font-weight: 500; width: 55%; background: #f8fafc; }
+    table.kv td { text-align: right; color: #0f172a; font-weight: 600; font-family: "DejaVu Sans Mono", monospace; }
+    table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: none; }
+
+    .conclusion {
+      margin-top: 12pt; padding: 10pt 12pt; border-radius: 4px;
+      background: #f0f9ff; border-left: 3px solid #0284c7;
+    }
+    .conclusion.good { background: #ecfdf5; border-left-color: #059669; }
+    .conclusion.warn { background: #fffbeb; border-left-color: #d97706; }
+    .conclusion.neutral { background: #f1f5f9; border-left-color: #64748b; }
+    .conclusion .ttl { font-size: 9pt; color: #475569; text-transform: uppercase; font-weight: 700; margin: 0 0 4pt; }
+    .conclusion p { margin: 0 0 6pt; font-size: 10pt; color: #1f2937; }
+    .conclusion .tips-h { font-size: 9pt; color: #475569; font-weight: 600; margin: 6pt 0 3pt; }
+    .conclusion ul { margin: 0; padding-left: 16pt; font-size: 9.5pt; color: #1f2937; }
+    .conclusion li { margin-bottom: 3pt; }
+
+    .empty { padding: 6pt; color: #94a3b8; font-style: italic; font-size: 9pt; }
+    details { margin-top: 14pt; }
+    pre.raw {
+      font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt;
+      white-space: pre-wrap; word-break: break-word;
+      background: #f8fafc; padding: 8pt; border: 1px solid #e2e8f0; border-radius: 3px;
+      color: #475569;
+    }
+    .footer-note { margin-top: 16pt; font-size: 7.5pt; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="head">
+  <div class="brand">InvestCalc DSS</div>
+  <h1>{{ title }}</h1>
+  <div class="meta">Loyiha: <b>{{ project.name }}</b> · Tayyorlangan: <b>{{ generated_at }}</b></div>
+</div>
+
+<h3 class="block-title">Kirish parametrlari</h3>
+{% if params %}
+<table class="kv">
+  {% for r in params %}
+  <tr><th>{{ r.label }}</th><td>{{ r.value }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">Parametrlar saqlanmagan.</div>
+{% endif %}
+
+<h3 class="block-title">Asosiy ko'rsatkichlar</h3>
+{% if results %}
+<table class="kv">
+  {% for r in results %}
+  <tr><th>{{ r.label }}</th><td>{{ r.value }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">Natija topilmadi.</div>
+{% endif %}
+
+{% if conclusion %}
+<div class="conclusion {{ conclusion.level }}">
+  <p class="ttl">{{ conclusion.title }}</p>
+  <p>{{ conclusion.summary }}</p>
+  {% if conclusion.tips %}
+  <div class="tips-h">Tavsiyalar va keyingi qadamlar</div>
+  <ul>
+    {% for tip in conclusion.tips %}<li>{{ tip }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="footer-note">
+  InvestCalc DSS · {{ generated_at }} · Avtomatik tayyorlangan
+</div>
+
+</body>
+</html>

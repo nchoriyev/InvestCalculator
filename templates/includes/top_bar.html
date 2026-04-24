@@ -1,0 +1,66 @@
+{% load static %}
+<header class="top-flow" role="banner">
+  <div class="top-flow-row">
+    <a href="#welcome" class="top-flow-brand" aria-label="Boshiga qaytish">
+      <span class="brand-mark-sm">IC</span>
+      <span class="top-flow-title">InvestCalc DSS</span>
+    </a>
+
+    <div class="top-flow-datetime" title="Joriy vaqt (Toshkent)">
+      <span class="top-flow-date">{{ banner.weekday }} · {{ banner.date_str }}</span>
+      <span class="top-flow-time">{{ banner.time_str }}</span>
+    </div>
+
+    <div class="top-flow-weather" title="Toshkent ob-havosi (Open-Meteo)">
+      <span class="weather-icon" aria-hidden="true">☁</span>
+      <span>{{ banner.weather_text }}</span>
+      <span class="muted-sm">Toshkent</span>
+    </div>
+
+    <div class="top-flow-fx" title="Joriy valyuta kurslari">
+      {% for line in banner.fx_lines %}
+      <span class="fx-pill">{{ line }}</span>
+      {% empty %}
+      <span class="fx-pill fx-pill--muted">{% if banner.fx_error %}{{ banner.fx_error|truncatechars:40 }}{% else %}Valyuta yuklanmoqda…{% endif %}</span>
+      {% endfor %}
+    </div>
+
+    <button type="button" class="theme-toggle top-theme" data-theme-toggle title="Yorug'/qorong'i tema" aria-label="Tema almashtirish">🌓</button>
+  </div>
+
+  <nav class="nav-flow" aria-label="Bo'limlar bo'yicha tezkor o'tish">
+    <div class="nav-group" data-group="basic">
+      <span class="nav-group-label">Asosiy</span>
+      <a href="#classic" data-tip="NPV, IRR, ROI">NPV / ROI</a>
+      <a href="#monte_carlo" data-tip="Stoxastik simulyatsiya">Monte Carlo</a>
+      <a href="#scenarios" data-tip="Optimistik/pessimistik">3 ssenariy</a>
+      <a href="#sensitivity" data-tip="±foiz o'zgarishlar">Sensitivlik</a>
+      <a href="#monthly_dcf" data-tip="Oylik aniqlik">Oylik DCF</a>
+    </div>
+    <div class="nav-group" data-group="risk">
+      <span class="nav-group-label">Risk</span>
+      <a href="#risk_matrix">Matritsa</a>
+      <a href="#risk_register">Reyestr</a>
+      <a href="#sustainability">Barqarorlik</a>
+    </div>
+    <div class="nav-group" data-group="saas">
+      <span class="nav-group-label">SaaS</span>
+      <a href="#saas">LTV / CAC</a>
+      <a href="#saas_extended">Rule40 / NRR</a>
+    </div>
+    <div class="nav-group" data-group="uz">
+      <span class="nav-group-label">O'zbekiston</span>
+      <a href="#bpo_uz">BPO</a>
+      <a href="#tax_shield">IT Park</a>
+      <a href="#rohc">ROHC</a>
+      <a href="#dynamic_risk">Sof eksport</a>
+    </div>
+    <div class="nav-group" data-group="ext">
+      <span class="nav-group-label">Tashqi</span>
+      <a href="#forecast">Bashorat</a>
+      <a href="#fx_fetch">Valyuta API</a>
+      <a href="#market_benchmark">Jahon Banki</a>
+      <a href="#history">Tarix</a>
+    </div>
+  </nav>
+</header>

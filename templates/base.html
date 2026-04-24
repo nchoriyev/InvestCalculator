@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}InvestCalc DSS{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Asosiy kontentga o‘tish</a>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  {% block body %}{% endblock %}
+  {% block footer %}
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <div class="site-footer-brand">
+        <strong>InvestCalc DSS</strong>
+        <span>Raqamli xizmatlar eksporti investitsiyalarini baholash</span>
+      </div>
+      <div class="site-footer-meta">
+        <span>© {% now "Y" %} — qaror qabul qilishni qo‘llab-quvvatlovchi tahlil</span>
+        <span class="site-footer-dot" aria-hidden="true">·</span>
+        <a href="{% url 'export_csv' %}">CSV</a>
+        <span class="site-footer-dot" aria-hidden="true">·</span>
+        <a href="{% url 'export_json' %}">JSON</a>
+        <span class="site-footer-dot" aria-hidden="true">·</span>
+        <a href="{% url 'export_pdf' %}">PDF</a>
+      </div>
+    </div>
+  </footer>
+  {% endblock %}
+  {% block scripts %}{% endblock %}
+  <script defer src="{% static 'js/ui-enhancements.js' %}"></script>
+  <script>
+  (function(){
+    var k = "investcalc_theme";
+    var t = localStorage.getItem(k);
+    if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    document.addEventListener("click", function(e){
+      var btn = e.target.closest && e.target.closest("[data-theme-toggle]");
+      if (!btn) return;
+      var h = document.documentElement;
+      var next = h.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      if (next === "light") h.removeAttribute("data-theme"); else h.setAttribute("data-theme", "dark");
+      localStorage.setItem(k, next === "light" ? "light" : "dark");
+    });
+  })();
+  </script>
+</body>
+</html>

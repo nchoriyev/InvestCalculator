@@ -1,0 +1,116 @@
+{% load form_extra %}
+<aside class="side-rail" aria-label="Chap panel — tezkor ma'lumot">
+
+  <div class="side-card side-card--accent">
+    <h3 class="side-card__title">Loyiha</h3>
+    <p class="side-card__lead">{{ project.name }}</p>
+    <p class="side-card__muted">Barcha hisob-kitoblar shu loyiha ostida saqlanadi.</p>
+  </div>
+
+  <div class="side-card">
+    <h3 class="side-card__title">Hisobotni yuklash</h3>
+    <nav class="side-links" aria-label="Fayl eksporti">
+      <a class="side-link side-link--pdf" href="{% url 'export_pdf' %}">
+        <span class="side-link__icon" aria-hidden="true">📄</span>
+        <span class="side-link__body">
+          <span class="side-link__title">To'liq PDF hisobot</span>
+          <span class="side-link__hint">Barcha bo'limlar bir faylda</span>
+        </span>
+      </a>
+      <a class="side-link" href="{% url 'export_csv' %}">
+        <span class="side-link__icon" aria-hidden="true">📊</span>
+        <span class="side-link__body">
+          <span class="side-link__title">CSV — tarix</span>
+          <span class="side-link__hint">Excel uchun jadval</span>
+        </span>
+      </a>
+      <a class="side-link" href="{% url 'export_json' %}">
+        <span class="side-link__icon" aria-hidden="true">{ }</span>
+        <span class="side-link__body">
+          <span class="side-link__title">JSON — sessiya</span>
+          <span class="side-link__hint">Texnik dump</span>
+        </span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-card">
+    <h3 class="side-card__title">Bajarilgan tahlillar</h3>
+    {% if results %}
+    <ul class="side-progress">
+      {% for key, entry in results.items %}
+      <li class="side-progress__item">
+        <a href="#{{ key }}">
+          <span class="dot dot--{% if entry.conclusion %}{{ entry.conclusion.level }}{% else %}neutral{% endif %}" aria-hidden="true"></span>
+          <span class="side-progress__name">{{ key|cut:"_"|title }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="side-card__muted">Hali hech qanday hisob-kitob qilinmagan. Quyidagi formalardan birini to'ldiring va "Hisoblash"ni bosing.</p>
+    {% endif %}
+  </div>
+
+  <div class="side-card">
+    <h3 class="side-card__title">Tezkor o'tish</h3>
+    <details class="side-cat" open>
+      <summary>Asosiy moliyaviy</summary>
+      <nav class="side-links side-links--dense">
+        <a class="side-link side-link--mini" href="#classic">NPV / ROI / IRR</a>
+        <a class="side-link side-link--mini" href="#monte_carlo">Monte Carlo</a>
+        <a class="side-link side-link--mini" href="#scenarios">3 ssenariy</a>
+        <a class="side-link side-link--mini" href="#sensitivity">Sensitivlik</a>
+        <a class="side-link side-link--mini" href="#monthly_dcf">Oylik DCF</a>
+      </nav>
+    </details>
+    <details class="side-cat">
+      <summary>Risk va barqarorlik</summary>
+      <nav class="side-links side-links--dense">
+        <a class="side-link side-link--mini" href="#risk_matrix">Risk matritsasi</a>
+        <a class="side-link side-link--mini" href="#risk_register">Risk reyestri</a>
+        <a class="side-link side-link--mini" href="#sustainability">Barqarorlik</a>
+      </nav>
+    </details>
+    <details class="side-cat">
+      <summary>SaaS biznes</summary>
+      <nav class="side-links side-links--dense">
+        <a class="side-link side-link--mini" href="#saas">LTV / CAC</a>
+        <a class="side-link side-link--mini" href="#saas_extended">Rule40 · NRR · Unit</a>
+      </nav>
+    </details>
+    <details class="side-cat">
+      <summary>O'zbekiston (BPO/IT Park)</summary>
+      <nav class="side-links side-links--dense">
+        <a class="side-link side-link--mini" href="#bpo_uz">BPO tahlili</a>
+        <a class="side-link side-link--mini" href="#tax_shield">IT Park soliq</a>
+        <a class="side-link side-link--mini" href="#rohc">ROHC</a>
+        <a class="side-link side-link--mini" href="#dynamic_risk">Sof eksport</a>
+      </nav>
+    </details>
+    <details class="side-cat">
+      <summary>Tashqi APIlar</summary>
+      <nav class="side-links side-links--dense">
+        <a class="side-link side-link--mini" href="#forecast">Eksport bashorati</a>
+        <a class="side-link side-link--mini" href="#fx_fetch">Valyuta kursi</a>
+        <a class="side-link side-link--mini" href="#market_benchmark">Jahon Banki</a>
+        <a class="side-link side-link--mini" href="#history">Tarix (DB)</a>
+      </nav>
+    </details>
+  </div>
+
+  {% if results %}
+  <form method="post" action="{% url 'reset_session' %}" class="side-card side-card--reset"
+        onsubmit="return confirm('Sessiyadagi barcha hisob-kitob va kiritilgan qiymatlar tozalanadi. Davom etamizmi?');">
+    {% csrf_token %}
+    <h3 class="side-card__title">Sessiya boshqaruvi</h3>
+    <p class="side-card__muted">Barcha natijalar va kiritilgan qiymatlarni tozalash. DB dagi tarix saqlanadi.</p>
+    <button type="submit" class="btn-reset">↺ Sessiyani tozalash</button>
+  </form>
+  {% endif %}
+
+  <div class="side-card side-card--tip">
+    <h3 class="side-card__title">Maslahat</h3>
+    <p class="side-tip">Har bir bo'limda hisoblangach <strong>"PDF yuklash"</strong> tugmasi paydo bo'ladi. Yoki yuqoridagi <strong>"To'liq PDF"</strong> orqali barcha bo'limlarni bir hisobotga jamlang.</p>
+  </div>
+</aside>

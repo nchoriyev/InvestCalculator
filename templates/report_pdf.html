@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <title>InvestCalc — {{ project.name }}</title>
+  <style>
+    @page { size: A4; margin: 1.6cm 1.5cm 1.8cm 1.5cm; }
+    body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.5pt; color: #1a1d24; line-height: 1.45; }
+
+    /* Cover */
+    .cover { text-align: center; padding: 2.5cm 0 1cm; border-bottom: 2px solid #0284c7; margin-bottom: 14pt; }
+    .cover .brand { font-size: 11pt; color: #0284c7; text-transform: uppercase; font-weight: 700; }
+    .cover h1 { font-size: 22pt; margin: 8pt 0 4pt; color: #0f172a; font-weight: 700; }
+    .cover .subtitle { font-size: 10pt; color: #475569; margin: 0; }
+    .cover .meta { margin-top: 14pt; font-size: 9pt; color: #64748b; }
+    .cover .meta b { color: #1a1d24; }
+
+    .toc { margin: 0 0 16pt; padding: 8pt 10pt; background: #f1f5f9; border-left: 3px solid #0284c7; border-radius: 4px; }
+    .toc h3 { margin: 0 0 4pt; font-size: 10pt; color: #334155; text-transform: uppercase; }
+    .toc ul { margin: 0; padding-left: 14pt; column-count: 2; }
+    .toc li { font-size: 9pt; margin: 1pt 0; color: #1f2937; }
+
+    /* Section */
+    .section { page-break-inside: avoid; margin-bottom: 18pt; }
+    .section h2 { font-size: 13pt; margin: 0 0 6pt; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4pt; }
+    .section .key { font-size: 8pt; color: #94a3b8; font-weight: 400; margin-left: 6pt; }
+
+    .section-grid { display: table; width: 100%; }
+    .col { display: table-cell; vertical-align: top; width: 50%; padding: 0 4pt; }
+
+    h3.block-title {
+      font-size: 9pt; color: #475569; margin: 6pt 0 4pt;
+      text-transform: uppercase; font-weight: 600;
+    }
+
+    table.kv {
+      width: 100%; border-collapse: collapse; margin-bottom: 6pt;
+      font-size: 9pt;
+    }
+    table.kv th, table.kv td { padding: 4pt 6pt; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    table.kv th { text-align: left; color: #64748b; font-weight: 500; width: 55%; background: #f8fafc; }
+    table.kv td { text-align: right; color: #0f172a; font-weight: 600; font-family: "DejaVu Sans Mono", monospace; }
+    table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: none; }
+
+    /* Conclusion */
+    .conclusion {
+      margin-top: 8pt; padding: 8pt 10pt; border-radius: 4px;
+      background: #f0f9ff; border-left: 3px solid #0284c7;
+    }
+    .conclusion.good { background: #ecfdf5; border-left-color: #059669; }
+    .conclusion.warn { background: #fffbeb; border-left-color: #d97706; }
+    .conclusion.neutral { background: #f1f5f9; border-left-color: #64748b; }
+    .conclusion .ttl { font-size: 8pt; color: #475569; text-transform: uppercase; font-weight: 700; margin: 0 0 3pt; }
+    .conclusion p { margin: 0 0 4pt; font-size: 9pt; color: #1f2937; }
+    .conclusion .tips-h { font-size: 8pt; color: #475569; font-weight: 600; margin: 4pt 0 2pt; }
+    .conclusion ul { margin: 0; padding-left: 14pt; font-size: 8.5pt; color: #1f2937; }
+    .conclusion li { margin-bottom: 2pt; }
+
+    .empty { padding: 6pt; color: #94a3b8; font-style: italic; font-size: 8pt; }
+    .footer-note { margin-top: 10pt; font-size: 7.5pt; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="brand">InvestCalc DSS</div>
+  <h1>{{ project.name }}</h1>
+  <p class="subtitle">Raqamli xizmatlar eksporti — investitsiya tahlili hisoboti</p>
+  <div class="meta">
+    Loyiha kodi: <b>{{ project.slug }}</b><br>
+    Tayyorlangan: <b>{{ generated_at }}</b><br>
+    Bo'limlar soni: <b>{{ section_count }}</b>
+  </div>
+</div>
+
+{% if sections %}
+<div class="toc">
+  <h3>Hisobot tarkibi</h3>
+  <ul>
+    {% for s in sections %}<li>{{ s.title }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% for s in sections %}
+<div class="section">
+  <h2>{{ s.title }} <span class="key">{{ s.key }}</span></h2>
+
+  <div class="section-grid">
+    <div class="col">
+      <h3 class="block-title">Kirish parametrlari</h3>
+      {% if s.params %}
+      <table class="kv">
+        {% for r in s.params %}
+        <tr><th>{{ r.label }}</th><td>{{ r.value }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">Parametrlar saqlanmagan.</div>
+      {% endif %}
+    </div>
+    <div class="col">
+      <h3 class="block-title">Asosiy ko'rsatkichlar</h3>
+      {% if s.results %}
+      <table class="kv">
+        {% for r in s.results %}
+        <tr><th>{{ r.label }}</th><td>{{ r.value }}</td></tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">Natija topilmadi.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if s.conclusion %}
+  <div class="conclusion {{ s.conclusion.level }}">
+    <p class="ttl">{{ s.conclusion.title }}</p>
+    <p>{{ s.conclusion.summary }}</p>
+    {% if s.conclusion.tips %}
+    <div class="tips-h">Tavsiyalar va keyingi qadamlar</div>
+    <ul>
+      {% for tip in s.conclusion.tips %}<li>{{ tip }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<div class="footer-note">
+  InvestCalc DSS · Avtomatik tayyorlangan hisobot · {{ generated_at }}
+</div>
+
+</body>
+</html>

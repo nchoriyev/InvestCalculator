@@ -1,0 +1,6 @@
+{% load form_extra %}
+{% with entry=results|get_item:section %}
+{% if entry %}
+<a href="{% url 'export_section_pdf' section %}" class="btn-pdf" download>PDF yuklash</a>
+{% endif %}
+{% endwith %}

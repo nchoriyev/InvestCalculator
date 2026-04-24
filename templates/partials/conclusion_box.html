@@ -1,0 +1,16 @@
+{% if conclusion %}
+<aside class="conclusion conclusion--{{ conclusion.level }}" aria-label="Xulosa">
+  <div class="conclusion-head">
+    <span class="conclusion-badge">{{ conclusion.title }}</span>
+  </div>
+  <p class="conclusion-summary">{{ conclusion.summary }}</p>
+  {% if conclusion.tips %}
+  <p class="conclusion-label">Optimallashtirish va keyingi qadamlar</p>
+  <ul class="conclusion-tips">
+    {% for tip in conclusion.tips %}
+    <li>{{ tip }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</aside>
+{% endif %}

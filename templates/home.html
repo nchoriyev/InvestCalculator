@@ -1,0 +1,801 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}InvestCalc — eksport investitsiyasi DSS{% endblock %}
+
+{% block body %}
+<div class="page-shell">
+  {% include "includes/top_bar.html" %}
+
+  <div class="page-body">
+  {% include "includes/side_rail.html" %}
+
+  <main class="main-flow" id="main-content" tabindex="-1">
+    {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+      <div class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-ok{% endif %}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ---------- Welcome / hero ---------- #}
+    <section class="hero" id="welcome">
+      <div class="hero-head">
+        <h1>InvestCalc DSS</h1>
+        <p class="hero-lead">
+          Raqamli xizmatlar eksporti uchun investitsiya qarorlarini qo'llab-quvvatlovchi
+          tahlil platformasi — <b>NPV, ROI, Monte Carlo</b>, risk va SaaS metrikalarini
+          bir joydan hisoblang va PDFga yuklab oling.
+        </p>
+      </div>
+
+      <ol class="hero-steps">
+        <li>
+          <span class="hero-step__num">1</span>
+          <div>
+            <b>Bo'limni tanlang</b>
+            <p>Yuqoridagi navigatsiyadan kerakli kalkulyator (masalan, NPV yoki Monte Carlo) tanlang.</p>
+          </div>
+        </li>
+        <li>
+          <span class="hero-step__num">2</span>
+          <div>
+            <b>Qiymatlarni kiriting</b>
+            <p>Maydonlar default qiymatlar bilan to'ldirilgan — istasangiz o'zingizniki bilan almashtiring.</p>
+          </div>
+        </li>
+        <li>
+          <span class="hero-step__num">3</span>
+          <div>
+            <b>"Hisoblash"ni bosing</b>
+            <p>Natija va grafik darhol chiqadi, ostida o'zbek tilida xulosa va tavsiyalar paydo bo'ladi.</p>
+          </div>
+        </li>
+        <li>
+          <span class="hero-step__num">4</span>
+          <div>
+            <b>PDF yuklab oling</b>
+            <p>Har bir bo'lim ostida "PDF yuklash" yoki chap paneldagi <b>"To'liq PDF"</b>dan foydalaning.</p>
+          </div>
+        </li>
+      </ol>
+
+      <details class="hero-faq">
+        <summary>Bo'limlar nimani hisoblaydi? (kengaytirib ko'rish)</summary>
+        <div class="hero-faq__grid">
+          <div><b>NPV / IRR / ROI</b> — investitsiyaning sof joriy qiymati va rentabelligi.</div>
+          <div><b>Monte Carlo</b> — minglab tasodifiy ssenariy bo'yicha NPV taqsimoti.</div>
+          <div><b>SaaS LTV / CAC</b> — mijoz hayotiy qiymati va olish narxi.</div>
+          <div><b>Risk matritsasi</b> — mamlakat, valyuta va kiber risklari yig'masi.</div>
+          <div><b>Bashorat</b> — keyingi 12 oy uchun eksport prognozi (regressiya/ARIMA).</div>
+          <div><b>BPO / IT Park</b> — O'zbekiston rezidentligi bilan soliq imtiyozini taqqoslash.</div>
+        </div>
+      </details>
+    </section>
+
+    {# ---------- Asosiy moliyaviy bo'limlar ---------- #}
+    <h2 class="cat-heading"><span class="cat-heading__num">A</span> Asosiy moliyaviy tahlil</h2>
+
+    <section class="section" id="classic" data-cat="basic">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Klassik investitsiya tahlili</h2>
+          <span>NPV, ROI, IRR va payback davri — bitta investitsiya uchun</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="classic" %}
+      </div>
+      <p class="section-desc">Boshlang'ich investitsiya, yillik pul oqimlari va diskont stavkasini kiriting. Natijada loyiha rentabelligi va o'zini qoplash davri chiqadi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="classic">
+        <label>Boshlang'ich investitsiya (USD)
+          <input type="text" name="initial_investment" value="{{ fc.initial_investment|default:'100000' }}" inputmode="decimal">
+          <small class="field-hint">Loyihaga sarflanadigan birinchi kapital.</small>
+        </label>
+        <label>Diskont stavkasi
+          <input type="text" name="discount_rate" value="{{ fc.discount_rate|default:'0.12' }}" inputmode="decimal">
+          <small class="field-hint">Yillik foiz (0.12 = 12%). Kapital qiymati yoki muqobil daromadlilik.</small>
+        </label>
+        <label>Qoldiq qiymati (USD)
+          <input type="text" name="salvage_value" value="{{ fc.salvage_value|default:'0' }}" inputmode="decimal">
+          <small class="field-hint">Loyiha oxirida qaytariladigan qiymat (asbob-uskuna sotish va h.k.).</small>
+        </label>
+        <label class="span-2">Yillik pul oqimlari (vergul yoki bo'shliq bilan ajrating)
+          <textarea name="annual_cashflows">{{ fc.annual_cashflows|default:'35000 38000 42000 45000 48000' }}</textarea>
+          <small class="field-hint">Misol: <code>35000 38000 42000 45000 48000</code> — har bir son bitta yilga teng.</small>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.classic %}
+      <div class="chart-wrap"><canvas id="chart-classic" aria-label="Pul oqimi grafigi"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>NPV</b><span>{{ results.classic.result.npv|floatformat:2 }}</span></div>
+        <div class="stat"><b>ROI</b><span>{{ results.classic.result.roi_simple|floatformat:4 }}</span></div>
+        <div class="stat"><b>IRR</b><span>{% if results.classic.result.irr != None %}{{ results.classic.result.irr|floatformat:4 }}{% else %}—{% endif %}</span></div>
+        <div class="stat"><b>Payback (yil)</b><span>{% if results.classic.result.payback_period_years != None %}{{ results.classic.result.payback_period_years|floatformat:2 }}{% else %}—{% endif %}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.classic.conclusion %}
+      {% else %}
+      <div class="empty-result">Natija bu yerda paydo bo'ladi — formani to'ldiring va "Hisoblash"ni bosing.</div>
+      {% endif %}
+    </section>
+
+    <section class="section" id="monte_carlo" data-cat="basic">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Monte Carlo simulyatsiyasi</h2>
+          <span>10 000+ tasodifiy ssenariy bo'yicha NPV taqsimoti</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="monte_carlo" %}
+      </div>
+      <p class="section-desc">Daromad va xarajat — aniq son emas, balki tarqalish. Bu yerda biz minglab "ehtimoliy" ssenariy o'ynaymiz va loyihaning muvaffaqiyat ehtimolini olamiz.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="monte_carlo">
+        <label>Simulyatsiyalar soni
+          <input type="text" name="n_simulations" value="{{ fm.n_simulations|default:'10000' }}" inputmode="numeric">
+          <small class="field-hint">5000–20000 oraliq odatda yetarli.</small>
+        </label>
+        <label>Investitsiya (USD)
+          <input type="text" name="initial_investment" value="{{ fm.initial_investment|default:'100000' }}" inputmode="decimal">
+        </label>
+        <label>Yillar
+          <input type="text" name="years" value="{{ fm.years|default:'5' }}" inputmode="numeric">
+        </label>
+        <label>Diskont stavkasi
+          <input type="text" name="discount_rate" value="{{ fm.discount_rate|default:'0.12' }}" inputmode="decimal">
+        </label>
+        <label>Daromad — o'rtacha (μ)
+          <input type="text" name="revenue_mean" value="{{ fm.revenue_mean|default:'80000' }}" inputmode="decimal">
+        </label>
+        <label>Daromad — og'ish (σ)
+          <input type="text" name="revenue_std" value="{{ fm.revenue_std|default:'15000' }}" inputmode="decimal">
+          <small class="field-hint">Qancha katta — shuncha noaniqlik.</small>
+        </label>
+        <label>Xarajat — o'rtacha (μ)
+          <input type="text" name="cost_mean" value="{{ fm.cost_mean|default:'50000' }}" inputmode="decimal">
+        </label>
+        <label>Xarajat — og'ish (σ)
+          <input type="text" name="cost_std" value="{{ fm.cost_std|default:'8000' }}" inputmode="decimal">
+        </label>
+        <label>Daromad o'sishi (μ)
+          <input type="text" name="revenue_growth_mean" value="{{ fm.revenue_growth_mean|default:'0.05' }}" inputmode="decimal">
+          <small class="field-hint">0.05 = yillik 5%.</small>
+        </label>
+        <label>Xarajat o'sishi (μ)
+          <input type="text" name="cost_growth_mean" value="{{ fm.cost_growth_mean|default:'0.04' }}" inputmode="decimal">
+        </label>
+        <label>Random seed (ixtiyoriy)
+          <input type="text" name="random_seed" value="{{ fm.random_seed|default:'' }}" placeholder="42" inputmode="numeric">
+          <small class="field-hint">Bir xil son — bir xil natija qaytaradi (takrorlanish uchun).</small>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Simulyatsiya boshlash</button></div>
+      </form>
+      {% if results.monte_carlo %}
+      <div class="chart-wrap"><canvas id="chart-monte_carlo"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Muvaffaqiyat ehtimoli</b><span>{{ results.monte_carlo.result.success_probability|floatformat:4 }}</span></div>
+        <div class="stat"><b>NPV — o'rtacha</b><span>{{ results.monte_carlo.result.npv_mean|floatformat:2 }}</span></div>
+        <div class="stat"><b>NPV — og'ish</b><span>{{ results.monte_carlo.result.npv_std|floatformat:2 }}</span></div>
+        <div class="stat"><b>CVaR 5%</b><span>{{ results.monte_carlo.result.cvar_95_loss|floatformat:2 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.monte_carlo.conclusion %}
+      {% else %}
+      <div class="empty-result">Default qiymatlar bilan ham sinab ko'rishingiz mumkin — shunchaki "Simulyatsiya boshlash"ni bosing.</div>
+      {% endif %}
+    </section>
+
+    <section class="section" id="scenarios" data-cat="basic">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Uch ssenariy</h2>
+          <span>Optimistik / bazaviy / pessimistik — yonma-yon</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="scenarios" %}
+      </div>
+      <p class="section-desc">Bitta loyihaning uchta ehtimoliy holatda NPV ini solishtiradi: eng yaxshi, kutilgan va eng yomon.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="scenarios">
+        <label>Investitsiya (USD)
+          <input type="text" name="initial_investment" value="{{ fsc.initial_investment|default:'100000' }}" inputmode="decimal">
+        </label>
+        <label>Diskont stavkasi
+          <input type="text" name="discount_rate" value="{{ fsc.discount_rate|default:'0.12' }}" inputmode="decimal">
+        </label>
+        <label>Qoldiq qiymati
+          <input type="text" name="salvage_value" value="{{ fsc.salvage_value|default:'0' }}" inputmode="decimal">
+        </label>
+        <label>Optimistik tushum koef.
+          <input type="text" name="opt_revenue_mult" value="{{ fsc.opt_revenue_mult|default:'1.15' }}" inputmode="decimal">
+          <small class="field-hint">1.15 = bazadan 15% yuqori.</small>
+        </label>
+        <label>Optimistik xarajat koef.
+          <input type="text" name="opt_cost_mult" value="{{ fsc.opt_cost_mult|default:'0.95' }}" inputmode="decimal">
+        </label>
+        <label>Pessimistik tushum koef.
+          <input type="text" name="pes_revenue_mult" value="{{ fsc.pes_revenue_mult|default:'0.85' }}" inputmode="decimal">
+        </label>
+        <label>Pessimistik xarajat koef.
+          <input type="text" name="pes_cost_mult" value="{{ fsc.pes_cost_mult|default:'1.08' }}" inputmode="decimal">
+        </label>
+        <label class="span-2">Bazaviy yillik CF (musbat = tushum, salbiy = xarajat)
+          <textarea name="annual_cashflows">{{ fsc.annual_cashflows|default:'50000 -20000 55000 60000' }}</textarea>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Solishtirish</button></div>
+      </form>
+      {% if results.scenarios %}
+      <div class="chart-wrap"><canvas id="chart-scenarios"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.scenarios.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="sensitivity" data-cat="basic">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Sensitivlik tahlili</h2>
+          <span>Bitta parametr ±foizga o'zgarganda NPV qancha o'zgaradi</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="sensitivity" %}
+      </div>
+      <p class="section-desc">Loyiha qaysi parametrga eng "sezgir"ligini topadi. Masalan: diskont stavkasi 10% ga oshsa, NPV qancha pasayadi?</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="sensitivity">
+        <label>Boshlang'ich investitsiya
+          <input type="text" name="initial_investment" value="{{ fse.initial_investment|default:'100000' }}" inputmode="decimal">
+        </label>
+        <label>Diskont (yillik)
+          <input type="text" name="discount_rate" value="{{ fse.discount_rate|default:'0.12' }}" inputmode="decimal">
+        </label>
+        <label>Qoldiq
+          <input type="text" name="salvage_value" value="{{ fse.salvage_value|default:'0' }}" inputmode="decimal">
+        </label>
+        <label>Tekshiriladigan parametr
+          <select name="sensitivity_parameter">
+            <option value="discount_rate" {% if not fse.sensitivity_parameter or fse.sensitivity_parameter == "discount_rate" %}selected{% endif %}>Diskont stavkasi</option>
+            <option value="first_cf" {% if fse.sensitivity_parameter == "first_cf" %}selected{% endif %}>Birinchi yil pul oqimi</option>
+            <option value="all_cf" {% if fse.sensitivity_parameter == "all_cf" %}selected{% endif %}>Barcha yillik CF</option>
+          </select>
+        </label>
+        <label class="span-2">Yillik pul oqimlari
+          <textarea name="annual_cashflows">{{ fse.annual_cashflows|default:'35000 38000 42000 45000 48000' }}</textarea>
+        </label>
+        <label>Qadamlar (%, bo'shliq bilan)
+          <input type="text" name="sensitivity_steps" value="{{ fse.sensitivity_steps|default:'-20 -10 0 10 20' }}">
+          <small class="field-hint"><code>-20 -10 0 10 20</code> — ±20% gacha 5 ta nuqta.</small>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.sensitivity %}
+      <div class="chart-wrap"><canvas id="chart-sensitivity"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.sensitivity.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="monthly_dcf" data-cat="basic">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Oylik DCF</h2>
+          <span>Aniqroq payback (yillar emas, oylarda)</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="monthly_dcf" %}
+      </div>
+      <p class="section-desc">Yillik DCF dagi yaxlitlash xatosini bartaraf etadi — har oy alohida diskontlanadi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="monthly_dcf">
+        <label>Investitsiya (USD)
+          <input type="text" name="initial_investment" value="{{ fmo.initial_investment|default:'100000' }}" inputmode="decimal">
+        </label>
+        <label>Yillik diskont stavkasi
+          <input type="text" name="discount_rate" value="{{ fmo.discount_rate|default:'0.12' }}" inputmode="decimal">
+        </label>
+        <label class="span-2">Oylik sof pul oqimlari (12+ son)
+          <textarea name="monthly_cashflows">{{ fmo.monthly_cashflows|default:'4000 4100 4200 4300 4400 4500 4600 4700 4800 4900 5000 5100' }}</textarea>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.monthly_dcf %}
+      <div class="stats">
+        <div class="stat"><b>NPV (oylik)</b><span>{{ results.monthly_dcf.result.npv_monthly_model_usd|floatformat:2 }}</span></div>
+        <div class="stat"><b>Payback (oy)</b><span>{% if results.monthly_dcf.result.payback_period_months %}{{ results.monthly_dcf.result.payback_period_months|floatformat:1 }}{% else %}—{% endif %}</span></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-monthly_dcf"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.monthly_dcf.conclusion %}
+      {% endif %}
+    </section>
+
+    {# ---------- Risk va barqarorlik ---------- #}
+    <h2 class="cat-heading"><span class="cat-heading__num">B</span> Risk va barqarorlik</h2>
+
+    <section class="section" id="risk_matrix" data-cat="risk">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Risk matritsasi</h2>
+          <span>Mamlakat, valyuta va kiber risklarini birlashtiradi</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="risk_matrix" %}
+      </div>
+      <p class="section-desc">Har bir risk omilini 0–1 oralig'ida baholang. Yig'ma ball NPV ga qo'llaniladi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="risk_matrix">
+        <label>Mamlakat riski (0–1)
+          <input type="text" name="country_risk_score" value="{{ fr.country_risk_score|default:'0.25' }}" inputmode="decimal">
+          <small class="field-hint">0.25 = past, 0.5 = o'rtacha, 0.75 = yuqori.</small>
+        </label>
+        <label>FX tebranish (0–1)
+          <input type="text" name="fx_volatility" value="{{ fr.fx_volatility|default:'0.2' }}" inputmode="decimal">
+        </label>
+        <label>Kiber ulush (0–1)
+          <input type="text" name="cyber_cost_share" value="{{ fr.cyber_cost_share|default:'0.15' }}" inputmode="decimal">
+        </label>
+        <label>Asosiy NPV ko'paytiruvchi
+          <input type="text" name="base_npv" value="{{ fr.base_npv|default:'1' }}" inputmode="decimal">
+          <small class="field-hint">Odatda 1.0 — natija nisbiy beriladi.</small>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Baholash</button></div>
+      </form>
+      {% if results.risk_matrix %}
+      <div class="chart-wrap"><canvas id="chart-risk_matrix"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Jami risk</b><span>{{ results.risk_matrix.result.composite_risk_score|floatformat:4 }}</span></div>
+        <div class="stat"><b>Tuzatilgan NPV</b><span>{{ results.risk_matrix.result.adjusted_npv|floatformat:4 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.risk_matrix.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="risk_register" data-cat="risk">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Risk reyestri</h2>
+          <span>Har bir risk: ehtimollik × ta'sir</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="risk_register" %}
+      </div>
+      <p class="section-desc">JSON formatida risklar ro'yxatini kiriting. Har biri uchun <code>name</code>, <code>probability</code> (0–1) va <code>impact</code> (0–1) bo'lishi kerak.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="risk_register">
+        <label class="span-full">JSON massiv
+          <textarea name="risk_register_json" rows="6">{% if frr.risk_register_json %}{{ frr.risk_register_json }}{% else %}[
+  {"name": "Valyuta", "probability": 0.4, "impact": 0.5},
+  {"name": "Mijoz ketishi", "probability": 0.3, "impact": 0.6}
+]{% endif %}</textarea>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Baholash</button></div>
+      </form>
+      {% if results.risk_register %}
+      <div class="chart-wrap"><canvas id="chart-risk_register"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.risk_register.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="sustainability" data-cat="risk">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Barqarorlik indeksi</h2>
+          <span>Loyihaning umumiy "salomatlik" balli (0–100)</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="sustainability" %}
+      </div>
+      <p class="section-desc">Monte Carlo muvaffaqiyati, jami risk va bashorat ishonchliligini birlashtirib, bitta umumiy ko'rsatkich beradi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="sustainability">
+        <label>Monte Carlo muvaffaqiyat ehtimoli
+          <input type="text" name="monte_carlo_success_probability" value="{{ fsu.monte_carlo_success_probability|default:'0.65' }}" inputmode="decimal">
+        </label>
+        <label>Jami risk (0–1)
+          <input type="text" name="composite_risk_score" value="{{ fsu.composite_risk_score|default:'0.28' }}" inputmode="decimal">
+        </label>
+        <label>Bashorat usuli
+          <select name="forecast_method">
+            <option value="linear_regression" {% if fsu.forecast_method == "linear_regression" or not fsu.forecast_method %}selected{% endif %}>Chiziqli regressiya</option>
+            <option value="arima" {% if fsu.forecast_method == "arima" %}selected{% endif %}>ARIMA</option>
+          </select>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Indeks hisoblash</button></div>
+      </form>
+      {% if results.sustainability %}
+      <div class="chart-wrap"><canvas id="chart-sustainability"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Indeks (0–100)</b><span>{{ results.sustainability.result.sustainability_index|floatformat:2 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.sustainability.conclusion %}
+      {% endif %}
+    </section>
+
+    {# ---------- SaaS ---------- #}
+    <h2 class="cat-heading"><span class="cat-heading__num">C</span> SaaS biznes metrikalari</h2>
+
+    <section class="section" id="saas" data-cat="saas">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>SaaS — LTV / CAC</h2>
+          <span>Mijoz hayotiy qiymati va olish narxi</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="saas" %}
+      </div>
+      <p class="section-desc">SaaS biznes uchun asosiy ko'rsatkich. <b>LTV : CAC ≥ 3</b> bo'lsa — biznes barqaror.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="saas">
+        <label>ARPU (oylik, USD)
+          <input type="text" name="arpu_monthly_usd" value="{{ fs.arpu_monthly_usd|default:'120' }}" inputmode="decimal">
+          <small class="field-hint">Average Revenue Per User — bitta mijozdan oyiga.</small>
+        </label>
+        <label>Brutto marja (0–1)
+          <input type="text" name="gross_margin" value="{{ fs.gross_margin|default:'0.75' }}" inputmode="decimal">
+          <small class="field-hint">0.75 = 75%.</small>
+        </label>
+        <label>Oylik churn
+          <input type="text" name="monthly_churn_rate" value="{{ fs.monthly_churn_rate|default:'0.05' }}" inputmode="decimal">
+          <small class="field-hint">0.05 = oyiga 5% mijoz ketadi.</small>
+        </label>
+        <label>Marketing budjeti (USD)
+          <input type="text" name="marketing_spend_usd" value="{{ fs.marketing_spend_usd|default:'50000' }}" inputmode="decimal">
+        </label>
+        <label>Yangi mijozlar (shu budjet uchun)
+          <input type="text" name="new_customers" value="{{ fs.new_customers|default:'80' }}" inputmode="numeric">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.saas %}
+      <div class="chart-wrap"><canvas id="chart-saas"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>LTV</b><span>{{ results.saas.result.ltv_usd|floatformat:2 }}</span></div>
+        <div class="stat"><b>CAC</b><span>{{ results.saas.result.cac_usd|floatformat:2 }}</span></div>
+        <div class="stat"><b>LTV : CAC</b><span>{% if results.saas.result.ltv_cac_ratio != None %}{{ results.saas.result.ltv_cac_ratio|floatformat:2 }}{% else %}—{% endif %}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.saas.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="saas_extended" data-cat="saas">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>SaaS+ : Rule of 40, NRR, Unit economics</h2>
+          <span>Kengaytirilgan SaaS metrikalari (3 rejim)</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="saas_extended" %}
+      </div>
+      <p class="section-desc">Rejimni tanlang — kerakli maydonlar avtomatik ko'rinadi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="saas_extended">
+        <label class="span-2">Rejim
+          <select name="saas_ext_mode" id="saas_ext_mode">
+            <option value="rule40" {% if not fsext.saas_ext_mode or fsext.saas_ext_mode == "rule40" %}selected{% endif %}>Rule of 40 — o'sish + marja</option>
+            <option value="nrr" {% if fsext.saas_ext_mode == "nrr" %}selected{% endif %}>NRR — Net Revenue Retention</option>
+            <option value="unit" {% if fsext.saas_ext_mode == "unit" %}selected{% endif %}>Unit economics — birlik iqtisodi</option>
+          </select>
+        </label>
+        <label class="rule40-field">Yillik tushum o'sishi
+          <input type="text" name="revenue_growth_yoy" value="{{ fsext.revenue_growth_yoy|default:'0.25' }}" inputmode="decimal">
+          <small class="field-hint">0.25 = 25%.</small>
+        </label>
+        <label class="rule40-field">Foyda marjasi
+          <input type="text" name="profit_margin" value="{{ fsext.profit_margin|default:'0.15' }}" inputmode="decimal">
+        </label>
+        <label class="nrr-field" style="display:none">Boshlang'ich MRR
+          <input type="text" name="starting_mrr" value="{{ fsext.starting_mrr|default:'100000' }}" inputmode="decimal">
+        </label>
+        <label class="nrr-field" style="display:none">Yakuniy MRR
+          <input type="text" name="ending_mrr" value="{{ fsext.ending_mrr|default:'115000' }}" inputmode="decimal">
+        </label>
+        <label class="nrr-field" style="display:none">Churn MRR
+          <input type="text" name="churned_mrr" value="{{ fsext.churned_mrr|default:'5000' }}" inputmode="decimal">
+        </label>
+        <label class="nrr-field" style="display:none">Expansion MRR
+          <input type="text" name="expansion_mrr" value="{{ fsext.expansion_mrr|default:'10000' }}" inputmode="decimal">
+        </label>
+        <label class="unit-field" style="display:none">Narx / birlik
+          <input type="text" name="price_per_unit_usd" value="{{ fsext.price_per_unit_usd|default:'50' }}" inputmode="decimal">
+        </label>
+        <label class="unit-field" style="display:none">O'zgaruvchan xarajat / birlik
+          <input type="text" name="variable_cost_per_unit_usd" value="{{ fsext.variable_cost_per_unit_usd|default:'15' }}" inputmode="decimal">
+        </label>
+        <label class="unit-field" style="display:none">Birlik / oy
+          <input type="text" name="units_per_month" value="{{ fsext.units_per_month|default:'1000' }}" inputmode="numeric">
+        </label>
+        <label class="unit-field" style="display:none">Doimiy xarajat / oy
+          <input type="text" name="fixed_cost_monthly_usd" value="{{ fsext.fixed_cost_monthly_usd|default:'20000' }}" inputmode="decimal">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.saas_extended %}
+      <div class="chart-wrap"><canvas id="chart-saas_extended"></canvas></div>
+      <div class="stats">
+        {% if results.saas_extended.result.mode == "rule40" %}
+        <div class="stat"><b>Rule of 40</b><span>{{ results.saas_extended.result.rule_of_40_score|floatformat:1 }}</span></div>
+        {% elif results.saas_extended.result.mode == "nrr" %}
+        <div class="stat"><b>NRR</b><span>{{ results.saas_extended.result.nrr_ratio|floatformat:3 }}</span></div>
+        {% else %}
+        <div class="stat"><b>Sof oy (USD)</b><span>{{ results.saas_extended.result.monthly_net_after_fixed_usd|floatformat:2 }}</span></div>
+        {% endif %}
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.saas_extended.conclusion %}
+      {% endif %}
+      <script>
+      (function(){
+        var sel = document.getElementById("saas_ext_mode");
+        if(!sel) return;
+        function t(){
+          var v = sel.value;
+          document.querySelectorAll(".rule40-field").forEach(function(el){ el.style.display = v==="rule40" ? "" : "none"; });
+          document.querySelectorAll(".nrr-field").forEach(function(el){ el.style.display = v==="nrr" ? "" : "none"; });
+          document.querySelectorAll(".unit-field").forEach(function(el){ el.style.display = v==="unit" ? "" : "none"; });
+        }
+        sel.addEventListener("change", t); t();
+      })();
+      </script>
+    </section>
+
+    {# ---------- O'zbekiston ---------- #}
+    <h2 class="cat-heading"><span class="cat-heading__num">D</span> O'zbekiston bozori (BPO / IT Park)</h2>
+
+    <section class="section" id="bpo_uz" data-cat="uz">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>BPO — O'zbekiston tahlili</h2>
+          <span>Eksport, ish haqi va IT Park imtiyozini yonma-yon</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="bpo_uz" %}
+      </div>
+      <p class="section-desc">BPO/outsourcing kompaniyasi uchun: imtiyoz bilan va imtiyozsiz ROIni taqqoslash.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="bpo_uz">
+        <label>Yillik eksport tushumi (USD)
+          <input type="text" name="annual_export_revenue_usd" value="{{ fb.annual_export_revenue_usd|default:'1200000' }}" inputmode="decimal">
+        </label>
+        <label>Yillik ish haqi fondi (USD)
+          <input type="text" name="annual_payroll_usd" value="{{ fb.annual_payroll_usd|default:'720000' }}" inputmode="decimal">
+        </label>
+        <label>Boshqa operatsion xarajatlar
+          <input type="text" name="other_operating_costs_usd" value="{{ fb.other_operating_costs_usd|default:'80000' }}" inputmode="decimal">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Tahlil qilish</button></div>
+      </form>
+      {% if results.bpo_uz %}
+      <div class="chart-wrap"><canvas id="chart-bpo_uz"></canvas></div>
+      <div class="stats">
+        {% if results.bpo_uz.result.ebit_usd %}
+        <div class="stat"><b>EBIT</b><span>{{ results.bpo_uz.result.ebit_usd|floatformat:2 }}</span></div>
+        {% endif %}
+        {% if results.bpo_uz.result.roi_on_export_revenue_with_it_park %}
+        <div class="stat"><b>ROI (IT Park)</b><span>{{ results.bpo_uz.result.roi_on_export_revenue_with_it_park|floatformat:4 }}</span></div>
+        {% endif %}
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.bpo_uz.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="tax_shield" data-cat="uz">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>IT Park — soliq imtiyozi</h2>
+          <span>Tax shield: imtiyozdan kelib chiqqan tejamkorlik</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="tax_shield" %}
+      </div>
+      <p class="section-desc">Imtiyozsiz va IT Park rezidenti sifatidagi soliq summasini farqi — bu sizning yillik tejamingiz.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="tax_shield">
+        <label>Soliqqa tortiladigan foyda (USD)
+          <input type="text" name="taxable_profit_usd" value="{{ ft.taxable_profit_usd|default:'200000' }}" inputmode="decimal">
+        </label>
+        <label>Stavka — imtiyozsiz
+          <input type="text" name="income_tax_rate_without_incentive" value="{{ ft.income_tax_rate_without_incentive|default:'0.15' }}" inputmode="decimal">
+          <small class="field-hint">0.15 = 15%.</small>
+        </label>
+        <label>Stavka — IT Park
+          <input type="text" name="income_tax_rate_it_park" value="{{ ft.income_tax_rate_it_park|default:'0.075' }}" inputmode="decimal">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Solishtirish</button></div>
+      </form>
+      {% if results.tax_shield %}
+      <div class="chart-wrap"><canvas id="chart-tax_shield"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Tax shield (USD)</b><span>{{ results.tax_shield.result.tax_shield_usd|floatformat:2 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.tax_shield.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="rohc" data-cat="uz">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>ROHC — inson kapitali rentabelligi</h2>
+          <span>Eksport / payroll nisbati</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="rohc" %}
+      </div>
+      <p class="section-desc">Bitta xodim qancha eksport tushumi olib kelmoqda? Hindiston/Polsha BPO benchmarklari ~1.5–2.0.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="rohc">
+        <label>Yillik eksport (USD)
+          <input type="text" name="annual_export_revenue_usd" value="{{ fro.annual_export_revenue_usd|default:'1200000' }}" inputmode="decimal">
+        </label>
+        <label>Yillik ish haqi (USD)
+          <input type="text" name="annual_payroll_usd" value="{{ fro.annual_payroll_usd|default:'720000' }}" inputmode="decimal">
+        </label>
+        <label>Xodimlar soni
+          <input type="text" name="headcount" value="{{ fro.headcount|default:'40' }}" inputmode="numeric">
+        </label>
+        <label>Benchmark (ixtiyoriy)
+          <input type="text" name="benchmark_revenue_per_payroll" value="{{ fro.benchmark_revenue_per_payroll|default:'' }}" placeholder="1.6" inputmode="decimal">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.rohc %}
+      <div class="chart-wrap"><canvas id="chart-rohc"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>ROHC</b><span>{{ results.rohc.result.rohc_ratio|floatformat:4 }}</span></div>
+        <div class="stat"><b>Xodim boshiga eksport</b><span>{{ results.rohc.result.export_revenue_per_employee_usd|floatformat:2 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.rohc.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="dynamic_risk" data-cat="uz">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Sof eksport foydasi</h2>
+          <span>Komissiya, valyuta kursi va Δe ta'sirini hisobga oladi</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="dynamic_risk" %}
+      </div>
+      <p class="section-desc">USD da kelgan tushumdan komissiya va so'mdagi xarajatlarni ayirib, sof foydani ko'rsatadi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="dynamic_risk">
+        <label>Eksport tushumi (USD)
+          <input type="text" name="export_revenue_usd" value="{{ fd.export_revenue_usd|default:'500000' }}" inputmode="decimal">
+        </label>
+        <label>Xalqaro komissiya (0–1)
+          <input type="text" name="international_fee_rate" value="{{ fd.international_fee_rate|default:'0.03' }}" inputmode="decimal">
+          <small class="field-hint">0.03 = 3% (Stripe, Wise va h.k.).</small>
+        </label>
+        <label>Mahalliy xarajat (so'm)
+          <input type="text" name="local_costs_in_local_currency" value="{{ fd.local_costs_in_local_currency|default:'4500000000' }}" inputmode="numeric">
+        </label>
+        <label>Kurs (so'm/USD)
+          <input type="text" name="exchange_rate_local_per_usd" value="{{ fd.exchange_rate_local_per_usd|default:'12500' }}" inputmode="decimal">
+        </label>
+        <label>Δe (kurs o'zgarishi, nisbiy)
+          <input type="text" name="delta_e" value="{{ fd.delta_e|default:'0' }}" inputmode="decimal">
+          <small class="field-hint">0.05 = +5% kurs ko'tarilishi.</small>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Hisoblash</button></div>
+      </form>
+      {% if results.dynamic_risk %}
+      <div class="chart-wrap"><canvas id="chart-dynamic_risk"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Sof foyda (USD)</b><span>{{ results.dynamic_risk.result.net_export_benefit_usd|floatformat:2 }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.dynamic_risk.conclusion %}
+      {% endif %}
+    </section>
+
+    {# ---------- Tashqi APIlar ---------- #}
+    <h2 class="cat-heading"><span class="cat-heading__num">E</span> Tashqi ma'lumot manbalari va tarix</h2>
+
+    <section class="section" id="forecast" data-cat="ext">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Eksport bashorati</h2>
+          <span>Keyingi 12 oy: chiziqli regressiya yoki ARIMA</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="forecast" %}
+      </div>
+      <p class="section-desc">Tarixiy oylik eksport hajmlarini kiriting — model trendni topib, kelajak prognozini chiqaradi.</p>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="forecast">
+        <label class="span-2">Tarixiy oylik tushumlar (USD, vergul yoki bo'shliq)
+          <textarea name="history_usd">{{ ff.history_usd|default:'120000 125000 118000 132000 140000 138000 145000 150000' }}</textarea>
+          <small class="field-hint">Kamida 6–8 oy bo'lsa yaxshi.</small>
+        </label>
+        <label>Bashorat gorizonti (oy)
+          <input type="text" name="horizon_months" value="{{ ff.horizon_months|default:'12' }}" inputmode="numeric">
+        </label>
+        <label class="check"><input type="checkbox" name="prefer_arima" {% if not ff or ff.prefer_arima == "on" %}checked{% endif %}> ARIMA modelini birinchi sinash</label>
+        <div class="btn-row"><button type="submit" class="btn">Bashorat qilish</button></div>
+      </form>
+      <p class="hint">Yoki admin paneldan <kbd>ExportTimeSeriesPoint</kbd> qo'shing — bo'sh qoldirsangiz ma'lumot DBdan o'qiladi.</p>
+      {% if results.forecast %}
+      <div class="chart-wrap"><canvas id="chart-forecast"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>Qo'llanilgan usul</b><span>{{ results.forecast.result.method_used }}</span></div>
+      </div>
+      {% include "partials/conclusion_box.html" with conclusion=results.forecast.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="fx_fetch" data-cat="ext">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Valyuta kursi (tashqi API)</h2>
+          <span>Joriy bozor kursi (open.er-api.com)</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="fx_fetch" %}
+      </div>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="fx_fetch">
+        <label>Valyuta (ISO kod)
+          <input type="text" name="fx_target" value="{{ ffx.fx_target|default:'UZS' }}" placeholder="UZS, EUR, RUB...">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Kursni yuklash</button></div>
+      </form>
+      {% if results.fx_fetch %}
+      <div class="stats">
+        <div class="stat"><b>Holat</b><span>{% if results.fx_fetch.result.ok %}Muvaffaqiyatli{% else %}Xatolik{% endif %}</span></div>
+        {% if results.fx_fetch.result.rate %}
+        <div class="stat"><b>1 USD =</b><span>{{ results.fx_fetch.result.rate|floatformat:2 }}</span></div>
+        {% endif %}
+      </div>
+      <div class="chart-wrap"><canvas id="chart-fx_fetch"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.fx_fetch.conclusion %}
+      {% endif %}
+    </section>
+
+    <section class="section" id="market_benchmark" data-cat="ext">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Jahon Banki benchmark</h2>
+          <span>Mamlakat yalpi ichki mahsuloti (GDP) o'sishi</span>
+        </div>
+        {% include "partials/section_pdf_link.html" with section="market_benchmark" %}
+      </div>
+      <form method="post" class="grid-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="market_benchmark">
+        <label>Mamlakat (ISO2 kod)
+          <input type="text" name="wb_country" value="{{ fmb.wb_country|default:'UZ' }}" placeholder="UZ, KZ, RU, US...">
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Yuklash</button></div>
+      </form>
+      {% if results.market_benchmark %}
+      <div class="chart-wrap"><canvas id="chart-market_benchmark"></canvas></div>
+      {% include "partials/conclusion_box.html" with conclusion=results.market_benchmark.conclusion %}
+      {% endif %}
+    </section>
+
+    {% if history %}
+    <section class="section" id="history" data-cat="ext">
+      <div class="section-head">
+        <div class="section-head-text">
+          <h2>Oxirgi hisob-kitoblar (DB tarix)</h2>
+          <span>Ma'lumotlar bazasidagi so'nggi 30 ta yozuv</span>
+        </div>
+      </div>
+      <div class="history-table-wrap">
+        <table class="history-table">
+          <thead><tr><th>Vaqt</th><th>Tahlil turi</th></tr></thead>
+          <tbody>
+            {% for h in history %}
+            <tr><td>{{ h.created_at|date:"Y-m-d H:i" }}</td><td>{{ h.get_kind_display }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+  {{ results_for_charts|json_script:"dashboard-results" }}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script defer src="{% static 'js/dashboard-charts.js' %}"></script>
+{% endblock %}
